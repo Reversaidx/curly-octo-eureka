@@ -14,6 +14,7 @@ import logging
 import sched
 import threading
 import mysql.connector
+import json
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -24,27 +25,32 @@ logger.addHandler(handler)
 
 app = Flask(__name__)
 viber = Api(BotConfiguration(
-    name = "ДР Хлебсоль" ,
+    name="ДР Хлебсоль",
     avatar='https://cs12.pikabu.ru/post_img/big/2021/11/16/5/1637044848151875496.jpg',
-    auth_token='4e45394a1227dded-f7463d21e7b569c3-226bab802efd7b4a'
+    auth_token=''
 ))
+
 
 @app.route('/', methods=['POST'])
 def incoming():
     logger.debug("received request. post data: {0}".format(request.get_data()))
-
-    viber_request = viber.parse_request(request.get_data().decode('utf8'))
-
+    tmp = request.get_data().decode('utf8')
+    viber_request = viber.parse_request(tmp)
+    data = json.loads(tmp)
     if isinstance(viber_request, ViberMessageRequest):
-        message = viber_request.message
-        name=mysqlquery(message,connection)
-        if name!=-1:
+        print(data["message"]["text"])
+        request_dict = json.loads(tmp)
+        message = viber_request.from_dict(request_dict)
+        id = data["message"]["text"]
+        name = mysqlquery(id, connection)
+        if name != -1:
             viber.send_messages(viber_request.sender.id, [
-                f'Вы выйграли {name}'
+                TextMessage(text=  f'Вы выйграли {name}')
+
             ])
         else:
             viber.send_messages(viber_request.sender.id, [
-                f'Идите нахуй'
+               TextMessage(text=f'Идите нахуй')
             ])
     elif isinstance(viber_request, ViberConversationStartedRequest) \
             or isinstance(viber_request, ViberSubscribedRequest) \
@@ -57,33 +63,40 @@ def incoming():
 
     return Response(status=200)
 
+
 def set_webhook(viber):
-        #viber.unset_webhook()
-        viber.set_webhook('https://omnomnommnom.com/')
+    # viber.unset_webhook()
+    viber.set_webhook('https://omnomnommnom.com/')
 
 
-def mysqlquery(id,connect):
-    query=f'select * from promo where id={id} and status is not null;'
+def mysqlquery(id, connect):
+    query = f'select name from promo where id={id} and status is  null;'
+    print(query.encode('ascii', 'ignore'))
     cursor = connect.cursor()
     cursor.execute(query)
-    if len(cursor)==0:
-        result=-1
-    else:
-        result=cursor[0]
+    try:
+        result = [  row for  row in cursor ]
+    except:
+        return -1
 
-    query2=f'update promo set status=true where id={id} and status is not null'
+    if len(result)==0:
+        return -1
+    query2 = f'update promo set status=true where id={id}'
     cursor.execute(query2)
 
+
     cursor.close()
-    return result
+    connect.commit()
+    return result[0]
+
 
 if __name__ == "__main__":
     scheduler = sched.scheduler(time.time, time.sleep)
     global connection
     connection = mysql.connector.connect(host='localhost',
-                                         database='electronics',
-                                         user='pynative',
-                                         password='pynative@#29'
+                                         database='promocode',
+                                         user='root',
+                                         password='3wdGgH9CNF'
                                          )
     scheduler.enter(5, 11, set_webhook, (viber,))
     t = threading.Thread(target=scheduler.run)
