@@ -31,64 +31,62 @@ viber = Api(BotConfiguration(
 
 @app.route('/', methods=['POST'])
 def incoming():
-	logger.debug("received request. post data: {0}".format(request.get_data()))
+    logger.debug("received request. post data: {0}".format(request.get_data()))
 
-	viber_request = viber.parse_request(request.get_data().decode('utf8'))
+    viber_request = viber.parse_request(request.get_data().decode('utf8'))
 
-	if isinstance(viber_request, ViberMessageRequest):
-		message = viber_request.message
-		viber.send_messages(viber_request.sender.id, [
-			message
-		])
-	elif isinstance(viber_request, ViberConversationStartedRequest) \
-			or isinstance(viber_request, ViberSubscribedRequest) \
-			or isinstance(viber_request, ViberUnsubscribedRequest):
-		viber.send_messages(viber_request.sender.id, [
-			TextMessage(None, None, viber_request.get_event_type())
-		])
-	elif isinstance(viber_request, ViberFailedRequest):
-		logger.warn("client failed receiving message. failure: {0}".format(viber_request))
+    if isinstance(viber_request, ViberMessageRequest):
+        message = viber_request.message
+        name=mysqlquery(message,connection)
+        if name!=-1:
+            viber.send_messages(viber_request.sender.id, [
+                f'Вы выйграли {name}'
+            ])
+        else:
+            viber.send_messages(viber_request.sender.id, [
+                f'Идите нахуй'
+            ])
+    elif isinstance(viber_request, ViberConversationStartedRequest) \
+            or isinstance(viber_request, ViberSubscribedRequest) \
+            or isinstance(viber_request, ViberUnsubscribedRequest):
+        viber.send_messages(viber_request.sender.id, [
+            TextMessage(None, None, viber_request.get_event_type())
+        ])
+    elif isinstance(viber_request, ViberFailedRequest):
+        logger.warn("client failed receiving message. failure: {0}".format(viber_request))
 
-	return Response(status=200)
+    return Response(status=200)
 
 def set_webhook(viber):
-        viber.unset_webhook()
-        viber.set_webhook('https://drxs.ru/')
+        #viber.unset_webhook()
+        viber.set_webhook('https://omnomnommnom.com/')
 
-def mysqlquery(id):
-	try:
-		connection = mysql.connector.connect(host='localhost',
-											 database='electronics',
-											 user='pynative',
-											 password='pynative@#29')
 
-		sql_select_Query = "select * from Laptop"
-		cursor = connection.cursor()
-		cursor.execute(sql_select_Query)
-		# get all records
-		records = cursor.fetchall()
-		print("Total number of rows in table: ", cursor.rowcount)
+def mysqlquery(id,connect):
+    query=f'select * from promo where id={id} and status is not null;'
+    cursor = connect.cursor()
+    cursor.execute(query)
+    if len(cursor)==0:
+        result=-1
+    else:
+        result=cursor[0]
 
-		print("\nPrinting each row")
-		for row in records:
-			print("Id = ", row[0], )
-			print("Name = ", row[1])
-			print("Price  = ", row[2])
-			print("Purchase date  = ", row[3], "\n")
+    query2=f'update promo set status=true where id={id} and status is not null'
+    cursor.execute(query2)
 
-	except mysql.connector.Error as e:
-		print("Error reading data from MySQL table", e)
-	finally:
-		if connection.is_connected():
-			connection.close()
-			cursor.close()
-			print("MySQL connection is closed")
+    cursor.close()
+    return result
 
 if __name__ == "__main__":
-	scheduler = sched.scheduler(time.time, time.sleep)
-	scheduler.enter(5, 11, set_webhook, (viber,))
-	t = threading.Thread(target=scheduler.run)
+    scheduler = sched.scheduler(time.time, time.sleep)
+    global connection
+    connection = mysql.connector.connect(host='localhost',
+                                         database='electronics',
+                                         user='pynative',
+                                         password='pynative@#29'
+                                         )
+    scheduler.enter(5, 11, set_webhook, (viber,))
+    t = threading.Thread(target=scheduler.run)
     t.start()
 
-    context = ('server.crt', 'server.key')
-	app.run(host='0.0.0.0', port=81, debug=True)
+    app.run(host='0.0.0.0', port=81, debug=True)

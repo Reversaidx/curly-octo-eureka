@@ -13,7 +13,7 @@ func main() {
 	v := &viber.Viber{
 		AppKey: "4e4b961433e7dd2a-1a75da9575db2e68-6f2fa13f46af23f2",
 		Sender: viber.Sender{
-			Name:   "Нахуй иди",
+			Name:   "ДР Хлебсоль" ,
 			Avatar: "https://cs12.pikabu.ru/post_img/big/2021/11/16/5/1637044848151875496.jpg",
 		},
 		Message:   myMsgReceivedFunc,  // your function for handling messages
