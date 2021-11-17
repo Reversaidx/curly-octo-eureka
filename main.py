@@ -96,7 +96,7 @@ if __name__ == "__main__":
     connection = mysql.connector.connect(host='localhost',
                                          database='promocode',
                                          user='root',
-                                         password='3wdGgH9CNF'
+                                         password=''
                                          )
     scheduler.enter(5, 11, set_webhook, (viber,))
     t = threading.Thread(target=scheduler.run)
